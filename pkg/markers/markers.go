@@ -33,10 +33,10 @@ type hasHelp interface {
 
 // Param tells Tektasker that this field can be used to receive the corresponding Task's param
 type Param struct {
-	// Name of your param
+	// Name is the name of your parameter
 	Name string `marker:"name"`
 
-	// Default value for your param
+	// Default is the default value you wish to set your parameter at if unspecified
 	Default *string `marker:",optional"`
 }
 
@@ -48,6 +48,5 @@ func define(name string, targetType markers.TargetType, help hasHelp) {
 }
 
 func init() {
-	// TODO(raskyld): generate Help() with helpgen
-	//define("tektasker:param", markers.DescribesField, Param{})
+	define("tektasker:param", markers.DescribesType, Param{})
 }
