@@ -21,7 +21,7 @@ package examples
 // Message is the message you want to send to your user
 type Message string
 
-// +tektasker:param:name=name
+// +tektasker:param:name=name,default=User
 
 // Name is the name that will be used in the Hello World!
 type Name string
