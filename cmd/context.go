@@ -14,18 +14,27 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package cmd
 
 import (
-	"fmt"
-	"github.com/Raskyld/go-tektasker/cmd"
-	"os"
+	"github.com/spf13/cobra"
+	"log/slog"
 )
 
-func main() {
-	cli := cmd.New()
-	if err := cli.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-		os.Exit(1)
-	}
+type Context struct {
+	Logger   *slog.Logger
+	DryRun   bool
+	Generate *ContextGenerate
+}
+
+type ContextGenerate struct {
+	Input string
+}
+
+func BindGenerate(ctx *Context, cmd *cobra.Command) {
+	gen := &ContextGenerate{}
+	ctx.Generate = gen
+
+	cmd.PersistentFlags().StringVarP(&gen.Input, "input", "i", ".",
+		"The input packages to generate code for")
 }

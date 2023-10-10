@@ -107,7 +107,7 @@ func (g TaskYamlGenerator) Generate(ctx *genall.GenerationContext) error {
 		}
 
 		// TODO(raskyld): Then for each params and results create the needed ENV var
-		err = ctx.WriteYAML("./task.yaml", "", []interface{}{task})
+		err = ctx.WriteYAML(task.Name+"-task.yaml", "", []interface{}{task})
 		if err != nil {
 			return err
 		}
