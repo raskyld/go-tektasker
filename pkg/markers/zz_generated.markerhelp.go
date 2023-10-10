@@ -59,3 +59,23 @@ func (Result) Help() *markers.DefinitionHelp {
 		},
 	}
 }
+
+func (Task) Help() *markers.DefinitionHelp {
+	return &markers.DefinitionHelp{
+		Category: "task",
+		DetailedHelp: markers.DetailedHelp{
+			Summary: "marks this executable package as a runnable task for Tekton",
+			Details: "",
+		},
+		FieldHelp: map[string]markers.DetailedHelp{
+			"Name": {
+				Summary: "is the name of your parameter",
+				Details: "",
+			},
+			"Version": {
+				Summary: "",
+				Details: "",
+			},
+		},
+	}
+}

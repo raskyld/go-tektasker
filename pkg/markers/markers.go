@@ -16,9 +16,17 @@ limitations under the License.
 
 package markers
 
-import "sigs.k8s.io/controller-tools/pkg/markers"
+import (
+	"sigs.k8s.io/controller-tools/pkg/markers"
+)
 
 var markersDef []documentedMarker
+
+const (
+	MarkerParam  = "tektasker:param"
+	MarkerResult = "tektasker:result"
+	MarkerTask   = "tektasker:task"
+)
 
 type documentedMarker struct {
 	*markers.Definition
@@ -43,6 +51,16 @@ type Param struct {
 
 // +controllertools:marker:generateHelp:category=task
 
+// Task marks this executable package as a runnable task for Tekton
+type Task struct {
+	// Name is the name of your parameter
+	Name string `marker:"name"`
+
+	Version string `marker:"version"`
+}
+
+// +controllertools:marker:generateHelp:category=task
+
 // Result marks this struct as a result which can then be used as the
 // target of a Marshalling operation
 type Result struct {
@@ -58,8 +76,9 @@ func define(name string, targetType markers.TargetType, help hasHelp) {
 }
 
 func init() {
-	define("tektasker:param", markers.DescribesType, Param{})
-	define("tektasker:result", markers.DescribesType, Result{})
+	define(MarkerParam, markers.DescribesType, Param{})
+	define(MarkerResult, markers.DescribesType, Result{})
+	define(MarkerTask, markers.DescribesPackage, Task{})
 }
 
 // Register all the markers in passed markers.Registry

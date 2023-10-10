@@ -16,12 +16,27 @@ limitations under the License.
 
 package examples
 
+// +tektasker:task:name=example,version=0.1
+
 // +tektasker:param:name=msg
 
 // Message is the message you want to send to your user
 type Message string
 
-// +tektasker:param:name=name,default=User
+// +tektasker:param:name=names,default="[\"jeremy\", \"virginie\"]"
 
-// Name is the name that will be used in the Hello World!
-type Name string
+// Names are the names that will be used in the Hello World!
+type Names []string
+
+// +tektasker:param:name=scores,default="{\"jeremy\": \"10\", \"virginie\": \"10\"}"
+
+// Scores maps a name to a score
+type Scores map[string]string
+
+// +tektasker:param:name=sscore,default="{\"name\": \"virginie\", \"score\": \"10\"}"
+
+// SingleScore is the score of a single person
+type SingleScore struct {
+	Name  string
+	Score int
+}
