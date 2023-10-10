@@ -7,6 +7,12 @@ A framework for building
 [Tekton](https://tekton.dev)
 [Tasks](https://tekton.dev/docs/pipelines/tasks/) in Go.
 
+## :wrench: State of the `main` branch
+
+As of now, building and running this project will output the
+result of parsing the package in `examples/`, this is very promising
+but there is still a lot to do!
+
 ## Road-map
 
 * Scaffold a simple Go project that will serves as the Task codebase

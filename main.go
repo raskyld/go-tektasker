@@ -16,6 +16,27 @@ limitations under the License.
 
 package main
 
+import (
+	"github.com/Raskyld/go-tektasker/internal/genyaml"
+	"log/slog"
+	"os"
+	"sigs.k8s.io/controller-tools/pkg/genall"
+)
+
 func main() {
-	// TODO
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	var yamlGenerator genall.Generator = genyaml.TaskYamlGenerator{logger}
+
+	generators := genall.Generators{&yamlGenerator}
+
+	runtime, err := generators.ForRoots("./examples/...")
+	if err != nil {
+		panic(err)
+	}
+
+	runtime.OutputRules = genall.OutputRules{
+		Default: genall.OutputToStdout,
+	}
+
+	runtime.Run()
 }

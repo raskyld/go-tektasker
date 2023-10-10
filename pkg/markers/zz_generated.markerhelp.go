@@ -28,16 +28,52 @@ func (Param) Help() *markers.DefinitionHelp {
 	return &markers.DefinitionHelp{
 		Category: "task",
 		DetailedHelp: markers.DetailedHelp{
-			Summary: "tells Tektasker that this field can be used to receive the corresponding Task's param",
+			Summary: "marks this struct as a parameter which can then be used as the target of an Unmarshalling operation",
 			Details: "",
 		},
 		FieldHelp: map[string]markers.DetailedHelp{
 			"Name": {
-				Summary: "of your param",
+				Summary: "is the name of your parameter",
 				Details: "",
 			},
 			"Default": {
-				Summary: "value for your param",
+				Summary: "is the default value you wish to set your parameter at if unspecified",
+				Details: "",
+			},
+		},
+	}
+}
+
+func (Result) Help() *markers.DefinitionHelp {
+	return &markers.DefinitionHelp{
+		Category: "task",
+		DetailedHelp: markers.DetailedHelp{
+			Summary: "marks this struct as a result which can then be used as the target of a Marshalling operation",
+			Details: "",
+		},
+		FieldHelp: map[string]markers.DetailedHelp{
+			"Name": {
+				Summary: "is the name of the result",
+				Details: "",
+			},
+		},
+	}
+}
+
+func (Task) Help() *markers.DefinitionHelp {
+	return &markers.DefinitionHelp{
+		Category: "task",
+		DetailedHelp: markers.DetailedHelp{
+			Summary: "marks this executable package as a runnable task for Tekton",
+			Details: "",
+		},
+		FieldHelp: map[string]markers.DetailedHelp{
+			"Name": {
+				Summary: "is the name of your parameter",
+				Details: "",
+			},
+			"Version": {
+				Summary: "",
 				Details: "",
 			},
 		},

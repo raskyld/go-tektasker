@@ -16,9 +16,17 @@ limitations under the License.
 
 package markers
 
-import "sigs.k8s.io/controller-tools/pkg/markers"
+import (
+	"sigs.k8s.io/controller-tools/pkg/markers"
+)
 
 var markersDef []documentedMarker
+
+const (
+	MarkerParam  = "tektasker:param"
+	MarkerResult = "tektasker:result"
+	MarkerTask   = "tektasker:task"
+)
 
 type documentedMarker struct {
 	*markers.Definition
@@ -31,13 +39,33 @@ type hasHelp interface {
 
 // +controllertools:marker:generateHelp:category=task
 
-// Param tells Tektasker that this field can be used to receive the corresponding Task's param
+// Param marks this struct as a parameter which can then be used as the
+// target of an Unmarshalling operation
 type Param struct {
 	// Name is the name of your parameter
 	Name string `marker:"name"`
 
 	// Default is the default value you wish to set your parameter at if unspecified
 	Default *string `marker:",optional"`
+}
+
+// +controllertools:marker:generateHelp:category=task
+
+// Task marks this executable package as a runnable task for Tekton
+type Task struct {
+	// Name is the name of your parameter
+	Name string `marker:"name"`
+
+	Version string `marker:"version"`
+}
+
+// +controllertools:marker:generateHelp:category=task
+
+// Result marks this struct as a result which can then be used as the
+// target of a Marshalling operation
+type Result struct {
+	// Name is the name of the result
+	Name string `marker:"name"`
 }
 
 func define(name string, targetType markers.TargetType, help hasHelp) {
@@ -48,5 +76,23 @@ func define(name string, targetType markers.TargetType, help hasHelp) {
 }
 
 func init() {
-	define("tektasker:param", markers.DescribesType, Param{})
+	define(MarkerParam, markers.DescribesType, Param{})
+	define(MarkerResult, markers.DescribesType, Result{})
+	define(MarkerTask, markers.DescribesPackage, Task{})
+}
+
+// Register all the markers in passed markers.Registry
+func Register(into *markers.Registry) error {
+	for _, def := range markersDef {
+		err := into.Register(def.Definition)
+		if err != nil {
+			return err
+		}
+
+		if def.help != nil {
+			into.AddHelp(def.Definition, def.help)
+		}
+	}
+
+	return nil
 }
