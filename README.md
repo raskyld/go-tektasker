@@ -9,9 +9,13 @@ A framework for building
 
 ## :wrench: State of the `main` branch
 
-As of now, building and running this project will output the
-result of parsing the package in `examples/`, this is very promising
-but there is still a lot to do!
+As of now, the CLI is capable of generating manifests for a list of Go package
+and outputting them in a directory.
+* The GVK is not appearing, I'm investigating...
+* The steps are not produced yet, I am thinking about producing a `base`
+  Kustomization for every Task with a single step that is the Go program
+  the user is making
+* In this single-step, every parameter should be passed as an environment var
 
 ## Road-map
 
