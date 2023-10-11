@@ -47,6 +47,8 @@ type Param struct {
 
 	// Default is the default value you wish to set your parameter at if unspecified
 	Default *string `marker:",optional"`
+
+	Strict bool `marker:",optional"`
 }
 
 // +controllertools:marker:generateHelp:category=task

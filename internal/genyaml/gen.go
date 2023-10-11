@@ -17,13 +17,16 @@ limitations under the License.
 package genyaml
 
 import (
+	"encoding/json"
 	"errors"
 	ttmarkers "github.com/Raskyld/go-tektasker/pkg/markers"
-	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"go/ast"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"log/slog"
 	"sigs.k8s.io/controller-tools/pkg/genall"
 	"sigs.k8s.io/controller-tools/pkg/markers"
+	"strings"
 )
 
 const KubernetesVersionLabel = "app.kubernetes.io/version"
@@ -57,25 +60,41 @@ func (g TaskYamlGenerator) Generate(ctx *genall.GenerationContext) error {
 			continue
 		}
 
-		var task v1.Task
-
+		var task unstructured.Unstructured
 		if taskMarker, ok := taskMarker.(ttmarkers.Task); ok {
 			task.SetName(taskMarker.Name)
-
-			if task.Labels == nil {
-				task.Labels = make(map[string]string)
-			}
-
-			task.Labels[KubernetesVersionLabel] = taskMarker.Version
+			task.SetLabels(map[string]string{
+				KubernetesVersionLabel: taskMarker.Version,
+			})
 		} else {
 			return errors.New("unexpected wrong type for task marker")
+		}
+
+		task.SetGroupVersionKind(schema.GroupVersionKind{
+			Group:   "tekton.dev",
+			Version: "v1",
+			Kind:    "Task",
+		})
+
+		// Concatenate every package-level doc from all files
+		packagesDoc := make([]string, 0, len(pkg.Syntax))
+		for _, file := range pkg.Syntax {
+			if file != nil && file.Doc != nil {
+				packagesDoc = append(packagesDoc, file.Doc.Text())
+			}
+		}
+
+		if len(packagesDoc) != 0 {
+			err = unstructured.SetNestedField(task.Object, strings.Join(packagesDoc, "\n"), "spec", "description")
+			if err != nil {
+				return err
+			}
 		}
 
 		// we keep a mapping from param and result name to scheme index
 		// to avoid duplicates
 		paramsIdx := make(map[string]int)
-
-		params := &task.Spec.Params
+		params := make([]interface{}, 0)
 
 		err = markers.EachType(ctx.Collector, pkg, func(info *markers.TypeInfo) {
 			rawParam := info.Markers.Get(ttmarkers.MarkerParam)
@@ -90,14 +109,14 @@ func (g TaskYamlGenerator) Generate(ctx *genall.GenerationContext) error {
 						return
 					}
 
-					paramsIdx[param.Name] = len(*params)
+					paramsIdx[param.Name] = len(params)
 					builtParam, err := g.buildParam(param, info)
 					if err != nil {
 						logger.Warn("could not create param", "err", err)
 						return
 					}
 
-					*params = append(*params, builtParam)
+					params = append(params, builtParam)
 				}
 			}
 		})
@@ -106,8 +125,13 @@ func (g TaskYamlGenerator) Generate(ctx *genall.GenerationContext) error {
 			return err
 		}
 
+		err = unstructured.SetNestedSlice(task.Object, params, "spec", "params")
+		if err != nil {
+			return err
+		}
+
 		// TODO(raskyld): Then for each params and results create the needed ENV var
-		err = ctx.WriteYAML(task.Name+"-task.yaml", "", []interface{}{task})
+		err = ctx.WriteYAML(task.GetName()+"-task.yaml", "", []interface{}{task.Object})
 		if err != nil {
 			return err
 		}
@@ -116,36 +140,81 @@ func (g TaskYamlGenerator) Generate(ctx *genall.GenerationContext) error {
 	return nil
 }
 
-func (g TaskYamlGenerator) buildParam(param ttmarkers.Param, typeInfo *markers.TypeInfo) (v1.ParamSpec, error) {
+func (g TaskYamlGenerator) buildParam(param ttmarkers.Param, typeInfo *markers.TypeInfo) (map[string]interface{}, error) {
+	rt := map[string]interface{}{
+		"name":        param.Name,
+		"description": typeInfo.Doc,
+	}
+
 	// First, we must figure out which Tekton type to use for the marked type
-	var tektonType v1.ParamType
+	var tektonType string
 	switch typeInfo.RawSpec.Type.(type) {
 	case *ast.ArrayType:
-		tektonType = v1.ParamTypeArray
-	case *ast.MapType, *ast.StructType:
-		tektonType = v1.ParamTypeObject
+		tektonType = "array"
+	case *ast.MapType:
+		// Should be a valid json string though as
+		// we don't have a non-strict json schema type in Tekton
+		tektonType = "string"
+	case *ast.StructType:
+		// If the struct is not in strict mode then it does not have
+		// a determinist schema
+		if !param.Strict {
+			tektonType = "string"
+			break
+		}
+
+		properties := make(map[string]interface{})
+		for _, field := range typeInfo.Fields {
+			tag, hasTag := field.Tag.Lookup("json")
+			if !hasTag {
+				return nil, errors.New("missing json tag on your strict struct")
+			}
+
+			tags := strings.Split(tag, ",")
+			if len(tags[0]) == 0 {
+				return nil, errors.New("you need to give explicit json tag name to your struct")
+			} else {
+				if strings.HasPrefix(tags[0], "-") {
+					// Ignore this field
+					continue
+				} else {
+					if _, ok := properties[tags[0]]; ok {
+						return nil, errors.New("cannot use duplicate json tag name")
+					}
+
+					properties[tags[0]] = map[string]interface{}{
+						"type": "string",
+					}
+				}
+			}
+		}
+
+		rt["properties"] = properties
+
+		tektonType = "object"
 	default:
-		tektonType = v1.ParamTypeString
+		tektonType = "string"
 	}
 
-	rt := v1.ParamSpec{
-		Name:        param.Name,
-		Type:        tektonType,
-		Description: typeInfo.Doc,
-	}
+	rt["type"] = tektonType
 
 	if param.Default != nil {
-		defaultValue := &v1.ParamValue{}
-		err := defaultValue.UnmarshalJSON([]byte(*param.Default))
-		if err != nil {
+		defValue := *param.Default
+		switch tektonType {
+		case "array":
+			var defaultArray []interface{}
+			err := json.Unmarshal([]byte(defValue), &defaultArray)
+			rt["default"] = defaultArray
 			return rt, err
+		case "object":
+			// See TEP-0075 for how we should update and maintain this section
+			var object map[string]interface{}
+			err := json.Unmarshal([]byte(defValue), &object)
+			rt["default"] = object
+			return rt, err
+		default:
+			rt["default"] = defValue
 		}
-
-		if defaultValue.Type != tektonType {
-			return rt, errors.New("type mismatch between default value and Go type")
-		}
-
-		rt.Default = defaultValue
 	}
 
 	return rt, nil

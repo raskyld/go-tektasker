@@ -40,6 +40,10 @@ func (Param) Help() *markers.DefinitionHelp {
 				Summary: "is the default value you wish to set your parameter at if unspecified",
 				Details: "",
 			},
+			"Strict": {
+				Summary: "",
+				Details: "",
+			},
 		},
 	}
 }
