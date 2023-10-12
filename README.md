@@ -60,6 +60,14 @@ spec:
         score:
           type: string
       type: object
+  results:
+    - description: StructResult is a result that will be marshaled to valid JSON
+      name: structresult
+      type: string
+    - description: ArrayResult is a result that will be marshaled to a valid JSON array
+        value
+      name: arrayresult
+      type: array
 ```
 
 ## Road-map
