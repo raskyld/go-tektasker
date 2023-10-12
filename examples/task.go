@@ -51,3 +51,13 @@ type StrictScore struct {
 	Name  string `json:"name"`
 	Score int    `json:"score"`
 }
+
+// +tektasker:result:name=structresult
+
+// StructResult is a result that will be marshaled to valid JSON
+type StructResult struct{}
+
+// +tektasker:result:name=arrayresult
+
+// ArrayResult is a result that will be marshaled to a valid JSON array value
+type ArrayResult []interface{}

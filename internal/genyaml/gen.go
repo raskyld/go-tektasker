@@ -95,6 +95,8 @@ func (g TaskYamlGenerator) Generate(ctx *genall.GenerationContext) error {
 		// to avoid duplicates
 		paramsIdx := make(map[string]int)
 		params := make([]interface{}, 0)
+		resultsIdx := make(map[string]int)
+		results := make([]interface{}, 0)
 
 		err = markers.EachType(ctx.Collector, pkg, func(info *markers.TypeInfo) {
 			rawParam := info.Markers.Get(ttmarkers.MarkerParam)
@@ -119,6 +121,29 @@ func (g TaskYamlGenerator) Generate(ctx *genall.GenerationContext) error {
 					params = append(params, builtParam)
 				}
 			}
+
+			rawResult := info.Markers.Get(ttmarkers.MarkerResult)
+			if rawResult != nil {
+				if result, ok := rawResult.(ttmarkers.Result); ok {
+					logger := logger.With("result", result.Name)
+					logger.Info("result found")
+
+					// ensure no duplication
+					if _, duplicate := resultsIdx[result.Name]; duplicate {
+						logger.Warn("result duplicated! ensure unique name")
+						return
+					}
+
+					resultsIdx[result.Name] = len(results)
+					builtResult, err := g.buildResult(result, info)
+					if err != nil {
+						logger.Warn("could not create result", "err", err)
+						return
+					}
+
+					results = append(results, builtResult)
+				}
+			}
 		})
 
 		if err != nil {
@@ -126,6 +151,11 @@ func (g TaskYamlGenerator) Generate(ctx *genall.GenerationContext) error {
 		}
 
 		err = unstructured.SetNestedSlice(task.Object, params, "spec", "params")
+		if err != nil {
+			return err
+		}
+
+		err = unstructured.SetNestedSlice(task.Object, results, "spec", "results")
 		if err != nil {
 			return err
 		}
@@ -216,6 +246,26 @@ func (g TaskYamlGenerator) buildParam(param ttmarkers.Param, typeInfo *markers.T
 			rt["default"] = defValue
 		}
 	}
+
+	return rt, nil
+}
+
+func (g TaskYamlGenerator) buildResult(result ttmarkers.Result, typeInfo *markers.TypeInfo) (map[string]interface{}, error) {
+	rt := map[string]interface{}{
+		"name":        result.Name,
+		"description": typeInfo.Doc,
+	}
+
+	// First, we must figure out which Tekton type to use for the marked type
+	var tektonType string
+	switch typeInfo.RawSpec.Type.(type) {
+	case *ast.ArrayType:
+		tektonType = "array"
+	default:
+		tektonType = "string"
+	}
+
+	rt["type"] = tektonType
 
 	return rt, nil
 }
