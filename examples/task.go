@@ -14,6 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package examples is a Tekton Task:
+//
+// Print a Hello World sorting people by score.
 package examples
 
 // +tektasker:task:name=example,version=0.1
@@ -39,4 +42,12 @@ type Scores map[string]string
 type SingleScore struct {
 	Name  string
 	Score int
+}
+
+// +tektasker:param:name=strictscore,default="{\"name\": \"jeremy\", \"score\": \"10\"}",strict=true
+
+// StrictScore is the score of a single person
+type StrictScore struct {
+	Name  string `json:"name"`
+	Score int    `json:"score"`
 }
