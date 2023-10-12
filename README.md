@@ -11,11 +11,56 @@ A framework for building
 
 As of now, the CLI is capable of generating manifests for a list of Go package
 and outputting them in a directory.
-* The GVK is not appearing, I'm investigating...
 * The steps are not produced yet, I am thinking about producing a `base`
   Kustomization for every Task with a single step that is the Go program
   the user is making
-* In this single-step, every parameter should be passed as an environment var
+
+This is the resulting YAML manifest of running tektasker on the package in
+`examples/`:
+
+```yaml
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  labels:
+    app.kubernetes.io/version: "0.1"
+  name: example
+spec:
+  description: |
+    Package examples is a Tekton Task:
+
+    Print a Hello World sorting people by score.
+  params:
+    - description: Message is the message you want to send to your user
+      name: msg
+      type: string
+    - default:
+        - jeremy
+        - virginie
+      description: Names are the names that will be used in the Hello World!
+      name: names
+      type: array
+    - default: '{"jeremy": "10", "virginie": "10"}'
+      description: Scores maps a name to a score
+      name: scores
+      type: string
+    - default: '{"name": "virginie", "score": "10"}'
+      description: SingleScore is the score of a single person
+      name: sscore
+      type: string
+    - default:
+        name: jeremy
+        score: "10"
+      description: StrictScore is the score of a single person
+      name: strictscore
+      properties:
+        name:
+          type: string
+        score:
+          type: string
+      type: object
+```
 
 ## Road-map
 
