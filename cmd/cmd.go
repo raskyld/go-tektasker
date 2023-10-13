@@ -47,6 +47,7 @@ func New() *cobra.Command {
 	root.PersistentFlags().BoolVar(&ctx.DryRun, "dry-run", false, "only output to stdout")
 
 	root.AddCommand(NewGenerate(&ctx))
+	root.AddCommand(NewMarkers(&ctx))
 
 	return root
 }
