@@ -41,13 +41,13 @@ func (TaskYamlGenerator) RegisterMarkers(into *markers.Registry) error {
 
 func (g TaskYamlGenerator) Generate(ctx *genall.GenerationContext) error {
 	for _, pkg := range ctx.Roots {
-		// TODO(raskyld): get all package level markers
 		// NB(raskyld): in the future we may/should use an IR to avoid hard coupling
 		// between the generation process and the specific v1 version
 		logger := g.Logger.With("pkg", pkg.Name)
 
 		logger.Debug("starting collecting")
 
+		// Check the package-level task marker is present or skip
 		pkgMarkers, err := markers.PackageMarkers(ctx.Collector, pkg)
 		if err != nil {
 			return err
@@ -70,6 +70,7 @@ func (g TaskYamlGenerator) Generate(ctx *genall.GenerationContext) error {
 			return errors.New("unexpected wrong type for task marker")
 		}
 
+		// For now we only support the v1 api
 		task.SetGroupVersionKind(schema.GroupVersionKind{
 			Group:   "tekton.dev",
 			Version: "v1",
@@ -77,6 +78,7 @@ func (g TaskYamlGenerator) Generate(ctx *genall.GenerationContext) error {
 		})
 
 		// Concatenate every package-level doc from all files
+		// to create the description of the task
 		packagesDoc := make([]string, 0, len(pkg.Syntax))
 		for _, file := range pkg.Syntax {
 			if file != nil && file.Doc != nil {
@@ -86,6 +88,28 @@ func (g TaskYamlGenerator) Generate(ctx *genall.GenerationContext) error {
 
 		if len(packagesDoc) != 0 {
 			err = unstructured.SetNestedField(task.Object, strings.Join(packagesDoc, "\n"), "spec", "description")
+			if err != nil {
+				return err
+			}
+		}
+
+		// Generate workspaces
+		if workspaces, ok := pkgMarkers[ttmarkers.MarkerWorkspace]; ok {
+			workspacesYaml := make([]interface{}, 0, len(workspaces))
+			for _, workspace := range workspaces {
+				if workspace, isWorkspace := workspace.(ttmarkers.Workspace); isWorkspace {
+					logger.Info("found workspace", "workspace", workspace.Name)
+					workspaceYaml, err := g.buildWorkspace(workspace)
+
+					if err != nil {
+						return err
+					}
+
+					workspacesYaml = append(workspacesYaml, workspaceYaml)
+				}
+			}
+
+			err := unstructured.SetNestedSlice(task.Object, workspacesYaml, "spec", "workspaces")
 			if err != nil {
 				return err
 			}
@@ -266,6 +290,21 @@ func (g TaskYamlGenerator) buildResult(result ttmarkers.Result, typeInfo *marker
 	}
 
 	rt["type"] = tektonType
+
+	return rt, nil
+}
+
+func (g TaskYamlGenerator) buildWorkspace(workspace ttmarkers.Workspace) (map[string]interface{}, error) {
+	rt := map[string]interface{}{
+		"name":        workspace.Name,
+		"description": workspace.Description,
+		"readOnly":    workspace.ReadOnly,
+		"optional":    workspace.Optional,
+	}
+
+	if workspace.MountPath != "" {
+		rt["mountPath"] = workspace.MountPath
+	}
 
 	return rt, nil
 }

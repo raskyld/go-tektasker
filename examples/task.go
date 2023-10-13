@@ -20,6 +20,9 @@ limitations under the License.
 package examples
 
 // +tektasker:task:name=example,version=0.1
+// +tektasker:workspace:name=workspace1,description="first workspace"
+// +tektasker:workspace:name=workspace2,description="second workspace",readOnly=true
+// +tektasker:workspace:name=workspace3,description="third workspace",readOnly=true,optional=true
 
 // +tektasker:param:name=msg
 

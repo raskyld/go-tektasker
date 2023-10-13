@@ -10,10 +10,7 @@ A framework for building
 ## :wrench: State of the `main` branch
 
 As of now, the CLI is capable of generating manifests for a list of Go package
-and outputting them in a directory.
-* The steps are not produced yet, I am thinking about producing a `base`
-  Kustomization for every Task with a single step that is the Go program
-  the user is making
+and outputting them in a directory or stdout.
 
 This is the resulting YAML manifest of running tektasker on the package in
 `examples/`:
@@ -68,6 +65,19 @@ spec:
         value
       name: arrayresult
       type: array
+  workspaces:
+    - description: first workspace
+      name: workspace1
+      optional: false
+      readOnly: false
+    - description: second workspace
+      name: workspace2
+      optional: false
+      readOnly: true
+    - description: third workspace
+      name: workspace3
+      optional: true
+      readOnly: true
 ```
 
 ## Road-map

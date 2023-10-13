@@ -28,7 +28,7 @@ func (Param) Help() *markers.DefinitionHelp {
 	return &markers.DefinitionHelp{
 		Category: "task",
 		DetailedHelp: markers.DetailedHelp{
-			Summary: "marks this struct as a parameter which can then be used as the target of an Unmarshalling operation",
+			Summary: "marks structs as Task parameter which can then be used in your code to take input from your users",
 			Details: "",
 		},
 		FieldHelp: map[string]markers.DetailedHelp{
@@ -37,11 +37,11 @@ func (Param) Help() *markers.DefinitionHelp {
 				Details: "",
 			},
 			"Default": {
-				Summary: "is the default value you wish to set your parameter at if unspecified",
+				Summary: "is the default value of the parameter",
 				Details: "",
 			},
 			"Strict": {
-				Summary: "",
+				Summary: "means you expect the parameter to strictly respect the format of your struct. For this to be possible, the value passed to this parameter by your user will need to be a valid JSON value that can be unmarshalled into your struct, that's why you need to put valid JSON tags in your structure fields.",
 				Details: "",
 			},
 		},
@@ -52,7 +52,7 @@ func (Result) Help() *markers.DefinitionHelp {
 	return &markers.DefinitionHelp{
 		Category: "task",
 		DetailedHelp: markers.DetailedHelp{
-			Summary: "marks this struct as a result which can then be used as the target of a Marshalling operation",
+			Summary: "marks this struct as a result which means it can be Marshaled to populate the associated result",
 			Details: "",
 		},
 		FieldHelp: map[string]markers.DetailedHelp{
@@ -68,16 +68,48 @@ func (Task) Help() *markers.DefinitionHelp {
 	return &markers.DefinitionHelp{
 		Category: "task",
 		DetailedHelp: markers.DetailedHelp{
-			Summary: "marks this executable package as a runnable task for Tekton",
+			Summary: "marks your package as a Task. Your package need to be executable to be bundled inside a container image, so you should use this marker on your main package",
 			Details: "",
 		},
 		FieldHelp: map[string]markers.DetailedHelp{
 			"Name": {
-				Summary: "is the name of your parameter",
+				Summary: "is the name of your Task. It will be used as the name of your Task manifest.",
 				Details: "",
 			},
 			"Version": {
-				Summary: "",
+				Summary: "is a way to communicate the version of your task to your users",
+				Details: "",
+			},
+		},
+	}
+}
+
+func (Workspace) Help() *markers.DefinitionHelp {
+	return &markers.DefinitionHelp{
+		Category: "task",
+		DetailedHelp: markers.DetailedHelp{
+			Summary: "asks a workspace for this task",
+			Details: "",
+		},
+		FieldHelp: map[string]markers.DetailedHelp{
+			"Name": {
+				Summary: "is the name of the workspace",
+				Details: "",
+			},
+			"Description": {
+				Summary: "for your workspace",
+				Details: "",
+			},
+			"MountPath": {
+				Summary: "is useful to chose where to mount your workspace and is always relative to root (`/`)",
+				Details: "",
+			},
+			"ReadOnly": {
+				Summary: "defines if your workspace should be Read-Only, remembers Tekton recommends to only have a single writeable workspace",
+				Details: "",
+			},
+			"Optional": {
+				Summary: "defines if your user can choose not to provide this workspace",
 				Details: "",
 			},
 		},

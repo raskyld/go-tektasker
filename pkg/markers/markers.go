@@ -23,9 +23,10 @@ import (
 var markersDef []documentedMarker
 
 const (
-	MarkerParam  = "tektasker:param"
-	MarkerResult = "tektasker:result"
-	MarkerTask   = "tektasker:task"
+	MarkerParam     = "tektasker:param"
+	MarkerResult    = "tektasker:result"
+	MarkerTask      = "tektasker:task"
+	MarkerWorkspace = "tektasker:workspace"
 )
 
 type documentedMarker struct {
@@ -39,35 +40,69 @@ type hasHelp interface {
 
 // +controllertools:marker:generateHelp:category=task
 
-// Param marks this struct as a parameter which can then be used as the
-// target of an Unmarshalling operation
+// Param marks structs as Task parameter which can then be used in your code
+// to take input from your users
 type Param struct {
 	// Name is the name of your parameter
 	Name string `marker:"name"`
 
-	// Default is the default value you wish to set your parameter at if unspecified
+	// Default is the default value of the parameter
 	Default *string `marker:",optional"`
 
+	// Strict means you expect the parameter to strictly respect the format
+	// of your struct. For this to be possible, the value passed to this parameter
+	// by your user will need to be a valid JSON value that can be
+	// unmarshalled into your struct, that's why you need to put valid JSON tags
+	// in your structure fields.
 	Strict bool `marker:",optional"`
 }
 
 // +controllertools:marker:generateHelp:category=task
 
-// Task marks this executable package as a runnable task for Tekton
+// Task marks your package as a Task.
+// Your package need to be executable to be bundled inside a container image,
+// so you should use this marker on your main package
 type Task struct {
-	// Name is the name of your parameter
+	// Name is the name of your Task.
+	// It will be used as the name of your Task manifest.
 	Name string `marker:"name"`
 
+	// Version is a way to communicate the version of your task to
+	// your users
 	Version string `marker:"version"`
 }
 
 // +controllertools:marker:generateHelp:category=task
 
-// Result marks this struct as a result which can then be used as the
-// target of a Marshalling operation
+// Result marks this struct as a result which means it can
+// be Marshaled to populate the associated result
 type Result struct {
 	// Name is the name of the result
 	Name string `marker:"name"`
+}
+
+// +controllertools:marker:generateHelp:category=task
+
+// Workspace asks a workspace for this task
+type Workspace struct {
+	// Name is the name of the workspace
+	Name string `marker:"name"`
+
+	// Description for your workspace
+	Description string `marker:"description"`
+
+	// MountPath is useful to chose where to mount your workspace and
+	// is always relative to root (`/`)
+	MountPath string `marker:"mountPath,optional"`
+
+	// ReadOnly defines if your workspace should be Read-Only,
+	// remembers Tekton recommends to only have a single writeable
+	// workspace
+	ReadOnly bool `marker:"readOnly,optional"`
+
+	// Optional defines if your user can choose not to provide this
+	// workspace
+	Optional bool `marker:"optional,optional"`
 }
 
 func define(name string, targetType markers.TargetType, help hasHelp) {
@@ -81,6 +116,7 @@ func init() {
 	define(MarkerParam, markers.DescribesType, Param{})
 	define(MarkerResult, markers.DescribesType, Result{})
 	define(MarkerTask, markers.DescribesPackage, Task{})
+	define(MarkerWorkspace, markers.DescribesPackage, Workspace{})
 }
 
 // Register all the markers in passed markers.Registry
