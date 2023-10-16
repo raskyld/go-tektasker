@@ -19,13 +19,16 @@ package genyaml
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	ttmarkers "github.com/Raskyld/go-tektasker/pkg/markers"
 	"go/ast"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"log/slog"
 	"sigs.k8s.io/controller-tools/pkg/genall"
+	"sigs.k8s.io/controller-tools/pkg/loader"
 	"sigs.k8s.io/controller-tools/pkg/markers"
+	"strconv"
 	"strings"
 )
 
@@ -44,7 +47,6 @@ func (g TaskYamlGenerator) Generate(ctx *genall.GenerationContext) error {
 		// NB(raskyld): in the future we may/should use an IR to avoid hard coupling
 		// between the generation process and the specific v1 version
 		logger := g.Logger.With("pkg", pkg.Name)
-
 		logger.Debug("starting collecting")
 
 		// Check the package-level task marker is present or skip
@@ -60,59 +62,19 @@ func (g TaskYamlGenerator) Generate(ctx *genall.GenerationContext) error {
 			continue
 		}
 
-		var task unstructured.Unstructured
-		if taskMarker, ok := taskMarker.(ttmarkers.Task); ok {
-			task.SetName(taskMarker.Name)
-			task.SetLabels(map[string]string{
-				KubernetesVersionLabel: taskMarker.Version,
-			})
-		} else {
-			return errors.New("unexpected wrong type for task marker")
+		task, err := g.initTask(taskMarker)
+		if err != nil {
+			return err
 		}
 
-		// For now we only support the v1 api
-		task.SetGroupVersionKind(schema.GroupVersionKind{
-			Group:   "tekton.dev",
-			Version: "v1",
-			Kind:    "Task",
-		})
-
-		// Concatenate every package-level doc from all files
-		// to create the description of the task
-		packagesDoc := make([]string, 0, len(pkg.Syntax))
-		for _, file := range pkg.Syntax {
-			if file != nil && file.Doc != nil {
-				packagesDoc = append(packagesDoc, file.Doc.Text())
-			}
+		err = g.buildPackageDoc(task, pkg)
+		if err != nil {
+			return err
 		}
 
-		if len(packagesDoc) != 0 {
-			err = unstructured.SetNestedField(task.Object, strings.Join(packagesDoc, "\n"), "spec", "description")
-			if err != nil {
-				return err
-			}
-		}
-
-		// Generate workspaces
-		if workspaces, ok := pkgMarkers[ttmarkers.MarkerWorkspace]; ok {
-			workspacesYaml := make([]interface{}, 0, len(workspaces))
-			for _, workspace := range workspaces {
-				if workspace, isWorkspace := workspace.(ttmarkers.Workspace); isWorkspace {
-					logger.Info("found workspace", "workspace", workspace.Name)
-					workspaceYaml, err := g.buildWorkspace(workspace)
-
-					if err != nil {
-						return err
-					}
-
-					workspacesYaml = append(workspacesYaml, workspaceYaml)
-				}
-			}
-
-			err := unstructured.SetNestedSlice(task.Object, workspacesYaml, "spec", "workspaces")
-			if err != nil {
-				return err
-			}
+		err = g.buildWorkspaces(task, pkgMarkers)
+		if err != nil {
+			return err
 		}
 
 		// we keep a mapping from param and result name to scheme index
@@ -184,8 +146,124 @@ func (g TaskYamlGenerator) Generate(ctx *genall.GenerationContext) error {
 			return err
 		}
 
-		// TODO(raskyld): Then for each params and results create the needed ENV var
-		err = ctx.WriteYAML(task.GetName()+"-task.yaml", "", []interface{}{task.Object})
+		err = g.buildSteps(task, pkg, params, results)
+		if err != nil {
+			return err
+		}
+
+		err = ctx.WriteYAML("base/"+task.GetName()+"-task.yaml", "", []interface{}{task.Object})
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (g TaskYamlGenerator) buildSteps(task unstructured.Unstructured, pkg *loader.Package, params, results []interface{}) error {
+	mainStep := map[string]interface{}{
+		"image": "ko://" + pkg.PkgPath,
+	}
+
+	envs := make([]interface{}, 0)
+
+	// NB(raskyld): this code is dirty asf, we should be able to clean it when
+	// migrating from ad-hoc generation to intermediate representation (IR)
+
+	for _, param := range params {
+		if param, ok := param.(map[string]interface{}); ok {
+			paramName := param["name"].(string)
+			envVarName := fmt.Sprintf("PARAM_%s_VALUE", strings.ToUpper(paramName))
+			paramValue := fmt.Sprintf("$(params[%s]", strconv.Quote(paramName))
+
+			if param["type"].(string) != "string" {
+				paramValue += "[*])"
+			} else {
+				paramValue += ")"
+			}
+
+			envs = append(envs, map[string]interface{}{
+				"name":  envVarName,
+				"value": paramValue,
+			})
+		}
+	}
+
+	for _, result := range results {
+		if result, ok := result.(map[string]interface{}); ok {
+			resultName := result["name"].(string)
+			envVarName := fmt.Sprintf("RESULT_%s_PATH", strings.ToUpper(resultName))
+			resultValue := fmt.Sprintf("$(results[%s].path)", strconv.Quote(resultName))
+
+			envs = append(envs, map[string]interface{}{
+				"name":  envVarName,
+				"value": resultValue,
+			})
+		}
+	}
+
+	if len(envs) > 0 {
+		mainStep["env"] = envs
+	}
+
+	return unstructured.SetNestedSlice(task.Object, []interface{}{mainStep}, "spec", "steps")
+}
+
+func (g TaskYamlGenerator) buildWorkspaces(task unstructured.Unstructured, pkgMarkers markers.MarkerValues) error {
+	if workspaces, ok := pkgMarkers[ttmarkers.MarkerWorkspace]; ok {
+		workspacesYaml := make([]interface{}, 0, len(workspaces))
+		for _, workspace := range workspaces {
+			if workspace, isWorkspace := workspace.(ttmarkers.Workspace); isWorkspace {
+				g.Logger.Info("found workspace", "workspace", workspace.Name)
+				workspaceYaml, err := g.buildWorkspace(workspace)
+
+				if err != nil {
+					return err
+				}
+
+				workspacesYaml = append(workspacesYaml, workspaceYaml)
+			}
+		}
+
+		err := unstructured.SetNestedSlice(task.Object, workspacesYaml, "spec", "workspaces")
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (g TaskYamlGenerator) initTask(taskMarker interface{}) (unstructured.Unstructured, error) {
+	var task unstructured.Unstructured
+	if taskMarker, ok := taskMarker.(ttmarkers.Task); ok {
+		task.SetName(taskMarker.Name)
+		task.SetLabels(map[string]string{
+			KubernetesVersionLabel: taskMarker.Version,
+		})
+	} else {
+		return unstructured.Unstructured{}, errors.New("unexpected wrong type for task marker")
+	}
+
+	// For now we only support the v1 api
+	task.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "tekton.dev",
+		Version: "v1",
+		Kind:    "Task",
+	})
+	return task, nil
+}
+
+// buildPackageDoc concatenates every package-level GoDoc to populate a Task description
+func (g TaskYamlGenerator) buildPackageDoc(task unstructured.Unstructured, pkg *loader.Package) error {
+	packagesDoc := make([]string, 0, len(pkg.Syntax))
+	for _, file := range pkg.Syntax {
+		if file != nil && file.Doc != nil {
+			packagesDoc = append(packagesDoc, file.Doc.Text())
+		}
+	}
+
+	if len(packagesDoc) != 0 {
+		err := unstructured.SetNestedField(task.Object, strings.Join(packagesDoc, "\n"), "spec", "description")
 		if err != nil {
 			return err
 		}
