@@ -151,7 +151,18 @@ func (g TaskYamlGenerator) Generate(ctx *genall.GenerationContext) error {
 			return err
 		}
 
+		kustomization := map[string]interface{}{
+			"resources": []interface{}{
+				task.GetName() + "-task.yaml",
+			},
+		}
+
 		err = ctx.WriteYAML("base/"+task.GetName()+"-task.yaml", "", []interface{}{task.Object})
+		if err != nil {
+			return err
+		}
+
+		err = ctx.WriteYAML("base/kustomization.yaml", "", []interface{}{kustomization})
 		if err != nil {
 			return err
 		}
