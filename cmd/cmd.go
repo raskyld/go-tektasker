@@ -48,6 +48,7 @@ func New() *cobra.Command {
 
 	root.AddCommand(NewGenerate(&ctx))
 	root.AddCommand(NewMarkers(&ctx))
+	root.AddCommand(NewInit(&ctx))
 
 	return root
 }
