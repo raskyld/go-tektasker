@@ -23,29 +23,53 @@ dotenv:
   - .env
 
 tasks:
+  default:
+    silent: true
+    ignore_error: true
+    cmds:
+      - cmd: "task -l"
+      - cmd: "echo '\n\tStatus:\n'"
+      - task: status
+
   status:
     desc: Check the version of the tools needed to build a Task and on which Kubernetes Cluster you are
+    silent: true
     cmds:
-      - "{{Raw ".KUBECTL_PATH"}} version --client"
-      - "{{Raw ".KUBECTL_PATH"}} config current-context"
-      - "{{Raw ".KO_PATH"}} version"
-      - "{{Raw ".TT_PATH"}} version"
+      - "echo 'kubectl version:'"
+      - "{{Raw ".PATH_KUBECTL"}} version --client | sed 's/^/\t/'"
+      - "echo 'kubectl context where to apply:'"
+      - |
+          {{Raw "- if .APPLY_CONTEXT -"}}
+          echo 'Fixed context: {{Raw ".APPLY_CONTEXT"}}' | sed 's/^/\t/'
+          {{Raw "- else -"}}
+          echo 'WARNING! It is recommended to set APPLY_CONTEXT in your .env file to avoid accidentally applying your task to the wrong cluster' && \
+          {{Raw ".PATH_KUBECTL"}} config current-context | sed 's/^/\t/'
+          {{Raw "- end -"}}
+      - "echo 'ko builder version:'"
+      - "{{Raw ".PATH_KO"}} version | sed 's/^/\t/'"
+      - "echo 'tektasker version:'"
+      - "{{Raw ".PATH_TEKTASKER"}} version | sed 's/^/\t/'"
+      - "echo 'destination for manifests:'"
+      - "echo '\tOUTPUT_MANIFESTS={{Raw ".OUTPUT_MANIFESTS"}}'"
+      - "echo 'kustomize overlay deployed by task apply:'"
+      - "echo '\tAPPLY_OVERLAY={{Raw ".APPLY_OVERLAY"}}'"
 
   manifest:
     desc: Generate your Task manifest as a Kustomization
     cmds:
-      - "{{Raw ".TT_PATH"}} generate manifest {{Raw ".TT_OUTPUT_MANIFEST"}}"
+      - "{{Raw ".PATH_TEKTASKER"}} generate manifest {{Raw ".OUTPUT_MANIFESTS"}}"
 
   generate:
     desc: Generate Go code for your project (run it everytime you change markers)
     cmds:
-      - "{{Raw ".TT_PATH"}} generate go {{Raw ".PROJECT_INTERNAL_PKGS"}} {{Raw ".TT_INTERNAL_PKG_NAME"}}"
+      - "{{Raw ".PATH_TEKTASKER"}} generate go {{Raw ".OUTPUT_INTERNAL_PKGS"}} {{Raw ".OUTPUT_INTERNAL_PKG_NAME"}}"
 
   apply:
     deps: ["generate", "manifest"]
     desc: Apply the changes on your current Kubernetes context
     cmds:
       - cmd: |
-          {{Raw ".KUBECTL_PATH"}} kustomize {{Raw ".TT_OUTPUT_MANIFEST"}}/{{Raw ".PROJECT_TASK_OVERLAY"}} | \
-          {{Raw ".KO_PATH"}} apply -f -
+          {{Raw ".PATH_KUBECTL"}} kustomize {{Raw ".OUTPUT_MANIFESTS"}}/{{Raw ".APPLY_OVERLAY"}} | \
+          {{Raw ".PATH_KO"}} resolve -f - | \
+          {{Raw ".PATH_KUBECTL"}} apply -f -{{Raw "if .APPLY_CONTEXT"}} --context {{Raw ".APPLY_CONTEXT"}}{{Raw "end"}}
 `
