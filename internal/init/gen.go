@@ -17,26 +17,38 @@ limitations under the License.
 package init
 
 import (
+	"fmt"
 	ttemplate "github.com/Raskyld/go-tektasker/internal/init/internal/template"
 	ttmarkers "github.com/Raskyld/go-tektasker/pkg/markers"
 	"log/slog"
 	"sigs.k8s.io/controller-tools/pkg/genall"
 	"sigs.k8s.io/controller-tools/pkg/markers"
+	"strings"
 	"text/template"
 )
 
 type Generator struct {
 	Logger   *slog.Logger
 	Template *template.Template
+	TaskName string
 }
 
-func New(logger *slog.Logger) *Generator {
+func New(logger *slog.Logger, taskName string) *Generator {
 	gen := &Generator{
 		Logger:   logger,
 		Template: &template.Template{},
+		TaskName: taskName,
 	}
 
-	gen.RegisterTemplate(ttemplate.TaskfileName, ttemplate.TaskfileTpl)
+	gen.Template.Funcs(template.FuncMap{
+		"Raw": func(content ...string) string {
+			return fmt.Sprintf("{{%s}}", strings.Join(content, " "))
+		},
+	})
+
+	gen.RegisterTemplate(ttemplate.TaskfileName, ttemplate.TaskfileTpl).
+		RegisterTemplate(ttemplate.DotEnvName, ttemplate.DotEnvTpl).
+		RegisterTemplate(ttemplate.TaskGoName, ttemplate.TaskGoTpl)
 
 	return gen
 }
@@ -56,15 +68,33 @@ func (g *Generator) RegisterTemplate(name string, tpl string) *Generator {
 }
 
 func (g *Generator) Generate(output genall.OutputRule) error {
-	wr, err := output.Open(nil, "Taskfile.yaml")
+	err := g.genFile(output, ttemplate.TaskfileName, "Taskfile.yaml", nil)
 	if err != nil {
 		return err
 	}
 
-	err = g.Template.ExecuteTemplate(wr, ttemplate.TaskfileName, nil)
+	err = g.genFile(output, ttemplate.DotEnvName, ".env", nil)
 	if err != nil {
 		return err
 	}
 
+	err = g.genFile(output, ttemplate.TaskGoName, "task.go", ttemplate.TaskGoArgs{TaskName: g.TaskName})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (g *Generator) genFile(output genall.OutputRule, tplName, path string, args any) error {
+	wr, err := output.Open(nil, path)
+	if err != nil {
+		return err
+	}
+
+	err = g.Template.ExecuteTemplate(wr, tplName, args)
+	if err != nil {
+		return err
+	}
 	return nil
 }

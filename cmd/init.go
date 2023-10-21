@@ -24,22 +24,35 @@ import (
 
 func NewInit(ctx *Context) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "init [output]",
+		Use:   "init task-name [output]",
 		Short: "Init an opinionated project to write a Task in Go",
-		Args:  cobra.MaximumNArgs(1),
+		Args:  cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			gen := initHandler.New(ctx.Logger)
+			taskName := "default"
+
+			if len(args) > 0 {
+				taskName = args[0]
+			}
 
 			var outRule genall.OutputRule
 			if ctx.DryRun {
 				outRule = genall.OutputToStdout
-			} else if len(args) > 0 {
-				outRule = genall.OutputToDirectory(args[0])
+			} else if len(args) > 1 {
+				outRule = genall.OutputToDirectory(args[1])
 			} else {
 				outRule = genall.OutputToDirectory(".")
 			}
 
-			return gen.Generate(outRule)
+			gen := initHandler.New(ctx.Logger, taskName)
+
+			err := gen.Generate(outRule)
+			if err != nil {
+				return err
+			}
+
+			ctx.Logger.Info("project init has been successful, please check the .env file for further configuration")
+
+			return nil
 		},
 	}
 

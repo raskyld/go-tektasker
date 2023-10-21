@@ -19,11 +19,33 @@ package template
 const TaskfileName = "taskfile"
 const TaskfileTpl = `version: "3"
 
+dotenv:
+  - .env
+
 tasks:
   status:
     desc: Check the version of the tools needed to build a Task and on which Kubernetes Cluster you are
     cmds:
-      - kubectl version --client
-      - kubectl config current-context
-      - ko version
+      - "{{Raw ".KUBECTL_PATH"}} version --client"
+      - "{{Raw ".KUBECTL_PATH"}} config current-context"
+      - "{{Raw ".KO_PATH"}} version"
+      - "{{Raw ".TT_PATH"}} version"
+
+  manifest:
+    desc: Generate your Task manifest as a Kustomization
+    cmds:
+      - "{{Raw ".TT_PATH"}} generate manifest {{Raw ".TT_OUTPUT_MANIFEST"}}"
+
+  generate:
+    desc: Generate Go code for your project (run it everytime you change markers)
+    cmds:
+      - "{{Raw ".TT_PATH"}} generate go {{Raw ".PROJECT_INTERNAL_PKGS"}} {{Raw ".TT_INTERNAL_PKG_NAME"}}"
+
+  apply:
+    deps: ["generate", "manifest"]
+    desc: Apply the changes on your current Kubernetes context
+    cmds:
+      - cmd: |
+          {{Raw ".KUBECTL_PATH"}} kustomize {{Raw ".TT_OUTPUT_MANIFEST"}}/{{Raw ".PROJECT_TASK_OVERLAY"}} | \
+          {{Raw ".KO_PATH"}} apply -f -
 `
