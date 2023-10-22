@@ -17,44 +17,44 @@ limitations under the License.
 package cmd
 
 import (
-    initGenerator "github.com/Raskyld/go-tektasker/internal/init"
-    "github.com/spf13/cobra"
-    "sigs.k8s.io/controller-tools/pkg/genall"
+	initGenerator "github.com/Raskyld/go-tektasker/internal/init"
+	"github.com/spf13/cobra"
+	"sigs.k8s.io/controller-tools/pkg/genall"
 )
 
 func NewInit(ctx *Context) *cobra.Command {
-    cmd := &cobra.Command{
-        Use:   "init task-name [output]",
-        Short: "Init an opinionated project to write a Task in Go",
-        Args:  cobra.RangeArgs(1, 2),
-        RunE: func(cmd *cobra.Command, args []string) error {
-            taskName := "default"
+	cmd := &cobra.Command{
+		Use:   "init task-name [output]",
+		Short: "Init an opinionated project to write a Task in Go",
+		Args:  cobra.RangeArgs(1, 2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			taskName := "default"
 
-            if len(args) > 0 {
-                taskName = args[0]
-            }
+			if len(args) > 0 {
+				taskName = args[0]
+			}
 
-            var outRule genall.OutputRule
-            if ctx.DryRun {
-                outRule = genall.OutputToStdout
-            } else if len(args) > 1 {
-                outRule = genall.OutputToDirectory(args[1])
-            } else {
-                outRule = genall.OutputToDirectory(".")
-            }
+			var outRule genall.OutputRule
+			if ctx.DryRun {
+				outRule = genall.OutputToStdout
+			} else if len(args) > 1 {
+				outRule = genall.OutputToDirectory(args[1])
+			} else {
+				outRule = genall.OutputToDirectory(".")
+			}
 
-            gen := initGenerator.New(ctx.Logger, taskName)
+			gen := initGenerator.New(ctx.Logger, taskName)
 
-            err := gen.Generate(outRule)
-            if err != nil {
-                return err
-            }
+			err := gen.Generate(outRule)
+			if err != nil {
+				return err
+			}
 
-            ctx.Logger.Info("project init has been successful, please check the .env file for further configuration")
+			ctx.Logger.Info("project init has been successful, please check the .env file for further configuration")
 
-            return nil
-        },
-    }
+			return nil
+		},
+	}
 
-    return cmd
+	return cmd
 }
