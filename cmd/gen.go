@@ -111,6 +111,8 @@ The code generated for your main package will be written in zz_generated.tektask
 }
 
 func NewGenerateManifest(ctx *Context) *cobra.Command {
+	var stepCommand string
+
 	genYaml := &cobra.Command{
 		Use:   "manifest output-dir",
 		Short: "Generate your YAML manifests and write them in the given output-dir",
@@ -126,7 +128,10 @@ tektasker gen -i ./pkg/... manifest ./manifests/
 `,
 		Args: ResolveManifestArgs(ctx),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var gen genall.Generator = genyaml.TaskYamlGenerator{ctx.Logger}
+			var gen genall.Generator = genyaml.TaskYamlGenerator{
+				Logger:      ctx.Logger,
+				StepCommand: stepCommand,
+			}
 			gens := genall.Generators{&gen}
 
 			runtime, err := gens.ForRoots(ctx.Generate.Input)
@@ -149,6 +154,8 @@ tektasker gen -i ./pkg/... manifest ./manifests/
 			return nil
 		},
 	}
+
+	genYaml.Flags().StringVar(&stepCommand, "command", "ko-app/{{.KoAppName}}", "What is the entrypoint of the container image of the task")
 
 	return genYaml
 }
