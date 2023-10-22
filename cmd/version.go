@@ -17,25 +17,19 @@ limitations under the License.
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
-	"log/slog"
 )
 
-type Context struct {
-	Logger   *slog.Logger
-	DryRun   bool
-	Generate *ContextGenerate
-	Version string
-}
+func NewVersion(ctx *Context) *cobra.Command {
+	cmd := &cobra.Command{
+      Use: "version",
+      Short: "Show Tektasker version",
+      Run: func(cmd *cobra.Command, args []string) {
+         fmt.Println(ctx.Version)
+      },
+   }
 
-type ContextGenerate struct {
-	Input string
-}
-
-func BindGenerate(ctx *Context, cmd *cobra.Command) {
-	gen := &ContextGenerate{}
-	ctx.Generate = gen
-
-	cmd.PersistentFlags().StringVarP(&gen.Input, "input", "i", ".",
-		"The input packages to generate code for")
+   return cmd
 }

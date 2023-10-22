@@ -22,9 +22,11 @@ import (
 	"os"
 )
 
-func New() *cobra.Command {
+func New(version string) *cobra.Command {
 	var debug bool
 	var ctx Context
+
+	ctx.Version = version
 
 	root := &cobra.Command{
 		Use:   "tektasker",
@@ -49,6 +51,7 @@ func New() *cobra.Command {
 	root.AddCommand(NewGenerate(&ctx))
 	root.AddCommand(NewMarkers(&ctx))
 	root.AddCommand(NewInit(&ctx))
+	root.AddCommand(NewVersion(&ctx))
 
 	return root
 }
