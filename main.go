@@ -22,8 +22,11 @@ import (
 	"os"
 )
 
+// Version is backed-in during the build process by the linker
+var Version = "dev"
+
 func main() {
-	cli := cmd.New()
+	cli := cmd.New(Version)
 	if err := cli.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
