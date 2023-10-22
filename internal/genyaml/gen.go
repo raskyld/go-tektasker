@@ -17,6 +17,7 @@ limitations under the License.
 package genyaml
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -25,17 +26,37 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"log/slog"
+	"path"
+	"path/filepath"
 	"sigs.k8s.io/controller-tools/pkg/genall"
 	"sigs.k8s.io/controller-tools/pkg/loader"
 	"sigs.k8s.io/controller-tools/pkg/markers"
 	"strconv"
 	"strings"
+	"text/template"
 )
 
 const KubernetesVersionLabel = "app.kubernetes.io/version"
 
 type TaskYamlGenerator struct {
 	Logger *slog.Logger
+
+	// StepCommand is used to fix the command field of the step (i.e. the entrypoint of your container)
+	StepCommand string
+}
+
+// stepCommandArgs is passed when templating the value of StepCommand
+type stepCommandArgs struct {
+	// PkgName is the name of the package being parsed
+	PkgName string
+
+	// ImportPath of the package
+	ImportPath string
+
+	// TODO(raskyld): Fragile code! We should use a custom type capable of replicating the behavior of various ko version
+	// KoAppName is replicating the way ko builder (0.15) determinate the entrypoint of the built container
+	// See issue #15 for details
+	KoAppName string
 }
 
 func (TaskYamlGenerator) RegisterMarkers(into *markers.Registry) error {
@@ -176,11 +197,23 @@ func (g TaskYamlGenerator) buildSteps(task unstructured.Unstructured, pkg *loade
 		"image": "ko://" + pkg.PkgPath,
 	}
 
-	envs := make([]interface{}, 0)
-
 	// NB(raskyld): this code is dirty asf, we should be able to clean it when
 	// migrating from ad-hoc generation to intermediate representation (IR)
 
+	command, err := g.parseFlagCommand(pkg)
+	if err != nil {
+		return err
+	}
+
+	cmds := strings.Split(command, " ")
+	icmds := make([]interface{}, len(cmds))
+	for i, cmd := range cmds {
+		icmds[i] = cmd
+	}
+
+	mainStep["command"] = icmds
+
+	envs := make([]interface{}, 0)
 	for _, param := range params {
 		if param, ok := param.(map[string]interface{}); ok {
 			paramName := param["name"].(string)
@@ -218,6 +251,35 @@ func (g TaskYamlGenerator) buildSteps(task unstructured.Unstructured, pkg *loade
 	}
 
 	return unstructured.SetNestedSlice(task.Object, []interface{}{mainStep}, "spec", "steps")
+}
+
+// parseFlagCommand parses the flag `command` passed by the user
+func (g TaskYamlGenerator) parseFlagCommand(pkg *loader.Package) (string, error) {
+	tpl := &template.Template{}
+	tpl, err := tpl.Parse(g.StepCommand)
+	if err != nil {
+		return "", err
+	}
+
+	// TODO(raskyld): migrate this to an interface `KoEntrypointResolver` following the Strategy Pattern.
+	//                Each resolver should be registered with a ko version range
+	koAppName := path.Base(pkg.PkgPath)
+	if koAppName == "." || koAppName == string(filepath.Separator) {
+		koAppName = "ko-app"
+	}
+
+	args := stepCommandArgs{
+		PkgName:    pkg.Name,
+		ImportPath: pkg.PkgPath,
+		KoAppName:  koAppName,
+	}
+
+	var command bytes.Buffer
+	err = tpl.Execute(&command, args)
+	if err != nil {
+		return "", err
+	}
+	return command.String(), nil
 }
 
 func (g TaskYamlGenerator) buildWorkspaces(task unstructured.Unstructured, pkgMarkers markers.MarkerValues) error {
