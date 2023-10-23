@@ -7,10 +7,10 @@ env:
   - CGO_ENABLED=0
 
 # The OS to compile for. `GOOS` env variable will be set to this value.
-goos: "{{ .Env.TARGET_OS }}"
+goos: linux
 
 # The architecture to compile for. `GOARCH` env variable will be set to this value.
-goarch: "{{ .Env.TARGET_ARCH }}"
+goarch: amd64
 
 # Binary output name.
 # {{ .Os }} will be replaced by goos field in the config file.
