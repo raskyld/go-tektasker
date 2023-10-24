@@ -19,12 +19,14 @@ package gengo
 import (
 	"bytes"
 	"fmt"
-	ttmarkers "github.com/Raskyld/go-tektasker/pkg/markers"
 	"go/ast"
 	"log/slog"
+	"strings"
+	"text/template"
+
+	ttmarkers "github.com/Raskyld/go-tektasker/pkg/markers"
 	"sigs.k8s.io/controller-tools/pkg/genall"
 	"sigs.k8s.io/controller-tools/pkg/markers"
-	"text/template"
 )
 
 const FuncName = "func"
@@ -37,24 +39,36 @@ const FuncTpl = `{{template "%s" .Header}}
 {{- end}}
 `
 
+// TaskGoFuncGenerator is the generator in charge of generating Go files for tasks
+// ATM, it generates both the internal Tektasker packages and makes user types implement
+// Interface awaited by Helper functions
 type TaskGoFuncGenerator struct {
 	Logger *slog.Logger
 
 	Template *template.Template
+
+	// HeaderFile path to add at the top of every generated go file
+	HeaderFile string
+
+	// Year to use for header copyright notice
+	Year string
 }
 
 // PerTemplateArgs maps each registered template to a mapping of param or result name to template args
 // templateName -> Param/Result Name -> Param/ResultArgs
-// We then will execute each template for each registered param or name with
-// the associated args
 type PerTemplateArgs map[string]map[string]interface{}
 
 type FuncArgs struct {
-	Header    GoHeaderArgs
-	Templates PerTemplateArgs
+	// GoHeaderArgs is the list of arguments we will pass to the GoHeader template invoked on every generated
+	// go file
+	GoHeaderArgs    GoHeaderArgs
+
+	// TemplatesArgs is a list of args to pass to the registered templates that is indexed by template,
+	// then by param or result name
+	TemplatesArgs PerTemplateArgs
 }
 
-func NewGoFunc(logger *slog.Logger) (*TaskGoFuncGenerator, error) {
+func NewGoFunc(logger *slog.Logger, headerfile string) (*TaskGoFuncGenerator, error) {
 	g := &TaskGoFuncGenerator{
 		Logger:   logger.With("generator", "goFunc"),
 		Template: &template.Template{},
@@ -86,6 +100,7 @@ func NewGoFunc(logger *slog.Logger) (*TaskGoFuncGenerator, error) {
 	return g, nil
 }
 
+// RegisterTemplate with a unique name which can then latter be used by the generator
 func (g *TaskGoFuncGenerator) RegisterTemplate(name string, tpl string) *TaskGoFuncGenerator {
 	nt, err := g.Template.New(name).Parse(tpl)
 	if err != nil {
@@ -101,6 +116,17 @@ func (*TaskGoFuncGenerator) RegisterMarkers(into *markers.Registry) error {
 }
 
 func (g *TaskGoFuncGenerator) Generate(ctx *genall.GenerationContext) error {
+	var headerText string
+
+	if g.HeaderFile != "" {
+		buf, err := ctx.ReadFile(g.HeaderFile)
+		if err != nil {
+			return err
+		}
+
+		headerText = strings.ReplaceAll(string(buf), " YEAR", " " + g.Year)
+	}
+	
 	for _, pkg := range ctx.Roots {
 		logger := g.Logger.With("pkg", pkg.Name)
 		logger.Debug("starting collecting")
@@ -118,6 +144,7 @@ func (g *TaskGoFuncGenerator) Generate(ctx *genall.GenerationContext) error {
 			continue
 		}
 
+		// Prepare the per-template per-param/result args mappings
 		perTemplateArgs := PerTemplateArgs(make(map[string]map[string]interface{}))
 		for _, t := range g.Template.Templates() {
 			// NB(raskyld): we need to exclude the main template as
@@ -151,18 +178,17 @@ func (g *TaskGoFuncGenerator) Generate(ctx *genall.GenerationContext) error {
 					// TODO(raskyld):
 					// 	add a way to skip creating the Unmarshal method so our
 					// 	users can create a custom unmarshaler for their complex types
-
-					mapToAdd := ParamFuncUnmarshalJSONName
+					funcTemplateToUse := ParamFuncUnmarshalJSONName
 
 					// NB(raskyld): this is for ease of use when we have a type made of string
 					// otherwise, we just expect the value to be valid JSON
 					if ident, ok := info.RawSpec.Type.(*ast.Ident); ok {
 						if ident.Name == "string" {
-							mapToAdd = ParamFuncUnmarshalSimpleName
+							funcTemplateToUse = ParamFuncUnmarshalSimpleName
 						}
 					}
 
-					perTemplateArgs[mapToAdd][param.Name] = ParamFuncArgs{
+					perTemplateArgs[funcTemplateToUse][param.Name] = ParamFuncArgs{
 						ParamName: param.Name,
 						ParamType: info.Name,
 					}
@@ -186,23 +212,26 @@ func (g *TaskGoFuncGenerator) Generate(ctx *genall.GenerationContext) error {
 						ResultType: info.Name,
 					}
 
-					mapToAdd := ResultFuncMarshalJSONName
+					funcTemplateToUse := ResultFuncMarshalJSONName
 
 					// NB(raskyld): this is for ease of use when we have a type made of string
 					// otherwise, we just expect the value to be valid JSON
 					if ident, ok := info.RawSpec.Type.(*ast.Ident); ok {
 						if ident.Name == "string" {
-							mapToAdd = ResultFuncMarshalSimpleName
+							funcTemplateToUse = ResultFuncMarshalSimpleName
 						}
 					}
 
-					perTemplateArgs[mapToAdd][result.Name] = ResultFuncArgs{
+					perTemplateArgs[funcTemplateToUse][result.Name] = ResultFuncArgs{
 						ResultName: result.Name,
 						ResultType: info.Name,
 					}
 				}
 			}
 		})
+		if err != nil {
+			return err
+		}
 
 		output, err := ctx.OutputRule.Open(pkg, "zz_generated.tektasker.go")
 		if err != nil {
@@ -215,12 +244,12 @@ func (g *TaskGoFuncGenerator) Generate(ctx *genall.GenerationContext) error {
 		}
 
 		err = g.Template.ExecuteTemplate(output, FuncName, FuncArgs{
-			Header: GoHeaderArgs{
+			GoHeaderArgs: GoHeaderArgs{
 				PkgName:     pkg.Name,
-				Header:      "// generated code",
+				Header:      headerText,
 				ImportPaths: importPaths,
 			},
-			Templates: perTemplateArgs,
+			TemplatesArgs: perTemplateArgs,
 		})
 
 		if err != nil {

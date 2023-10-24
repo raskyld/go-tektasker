@@ -40,6 +40,8 @@ func NewGenerate(ctx *Context) *cobra.Command {
 }
 
 func NewGenerateGo(ctx *Context) *cobra.Command {
+	var headerFile string
+
 	genFuncGo := &cobra.Command{
 		Use:   "go [internalPkgPath] [internalPkgName]",
 		Short: "Generate the Go code to integrate with Tekton",
@@ -106,6 +108,8 @@ The code generated for your main package will be written in zz_generated.tektask
 			return nil
 		},
 	}
+
+	genFuncGo.Flags().StringVarP(&headerFile, "headerfile", "b", "", "Path to a boilerplate header file to put at the top of any generated go code. TIPS: ' YEAR' will be replaced with the current year!")
 
 	return genFuncGo
 }
