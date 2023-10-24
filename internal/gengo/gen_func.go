@@ -30,9 +30,9 @@ import (
 )
 
 const FuncName = "func"
-const FuncTpl = `{{template "%s" .Header}}
+const FuncTpl = `{{template "%s" .GoHeaderArgs}}
 
-{{- range $tplName, $args := .Templates}}
+{{- range $tplName, $args := .TemplatesArgs}}
 {{- range $args}}
 {{CallTemplate $tplName .}}
 {{- end}}
@@ -61,17 +61,19 @@ type PerTemplateArgs map[string]map[string]interface{}
 type FuncArgs struct {
 	// GoHeaderArgs is the list of arguments we will pass to the GoHeader template invoked on every generated
 	// go file
-	GoHeaderArgs    GoHeaderArgs
+	GoHeaderArgs GoHeaderArgs
 
 	// TemplatesArgs is a list of args to pass to the registered templates that is indexed by template,
 	// then by param or result name
 	TemplatesArgs PerTemplateArgs
 }
 
-func NewGoFunc(logger *slog.Logger, headerfile string) (*TaskGoFuncGenerator, error) {
+func NewGoFunc(logger *slog.Logger, headerfile, year string) (*TaskGoFuncGenerator, error) {
 	g := &TaskGoFuncGenerator{
-		Logger:   logger.With("generator", "goFunc"),
-		Template: &template.Template{},
+		Logger:     logger.With("generator", "goFunc"),
+		Template:   &template.Template{},
+		HeaderFile: headerfile,
+		Year:       year,
 	}
 
 	// NB(raskyld): this hack is needed to call template
@@ -124,9 +126,9 @@ func (g *TaskGoFuncGenerator) Generate(ctx *genall.GenerationContext) error {
 			return err
 		}
 
-		headerText = strings.ReplaceAll(string(buf), " YEAR", " " + g.Year)
+		headerText = strings.ReplaceAll(string(buf), " YEAR", " "+g.Year)
 	}
-	
+
 	for _, pkg := range ctx.Roots {
 		logger := g.Logger.With("pkg", pkg.Name)
 		logger.Debug("starting collecting")
