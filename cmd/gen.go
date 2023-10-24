@@ -22,6 +22,8 @@ import (
 	"github.com/spf13/cobra"
 	"path/filepath"
 	"sigs.k8s.io/controller-tools/pkg/genall"
+	"strconv"
+	"time"
 )
 
 func NewGenerate(ctx *Context) *cobra.Command {
@@ -40,6 +42,9 @@ func NewGenerate(ctx *Context) *cobra.Command {
 }
 
 func NewGenerateGo(ctx *Context) *cobra.Command {
+	var headerFile string
+	var year string
+
 	genFuncGo := &cobra.Command{
 		Use:   "go [internalPkgPath] [internalPkgName]",
 		Short: "Generate the Go code to integrate with Tekton",
@@ -67,14 +72,14 @@ The code generated for your main package will be written in zz_generated.tektask
 
 			var genFunc, genInternal genall.Generator
 
-			genFuncPtr, err := gengo.NewGoFunc(ctx.Logger)
+			genFuncPtr, err := gengo.NewGoFunc(ctx.Logger, headerFile, year)
 			if err != nil {
 				return err
 			}
 
 			genFunc = genFuncPtr
 
-			genInternalPtr, err := gengo.NewGoInternal(ctx.Logger, outputPkgName)
+			genInternalPtr, err := gengo.NewGoInternal(ctx.Logger, outputPkgName, headerFile, year)
 			if err != nil {
 				return err
 			}
@@ -107,6 +112,8 @@ The code generated for your main package will be written in zz_generated.tektask
 		},
 	}
 
+	genFuncGo.Flags().StringVarP(&headerFile, "headerfile", "b", "", "Path to a boilerplate header file to put at the top of any generated go code. TIPS: ' YEAR' will be replaced with the current year!")
+	genFuncGo.Flags().StringVar(&year, "year", strconv.Itoa(time.Now().Year()), "Which year should be written in the headerfile")
 	return genFuncGo
 }
 

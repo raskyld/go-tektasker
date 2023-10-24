@@ -18,7 +18,9 @@ package gengo
 
 const GoHeaderName = "go.header"
 
-const GoHeaderTpl = `{{.Header}}
+const GoHeaderTpl = `{{- with .Header -}}
+{{.}}
+{{end -}}
 
 package {{.PkgName}}
 
