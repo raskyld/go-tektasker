@@ -22,22 +22,25 @@ import (
 	"log/slog"
 	"sigs.k8s.io/controller-tools/pkg/genall"
 	"sigs.k8s.io/controller-tools/pkg/markers"
+	"strings"
 	"text/template"
 )
 
 type TaskGoInternalGenerator struct {
-	Logger *slog.Logger
-
-	Template *template.Template
-
+	Logger      *slog.Logger
+	Template    *template.Template
 	PackageName string
+	HeaderFile  string
+	Year        string
 }
 
-func NewGoInternal(logger *slog.Logger, pkgName string) (*TaskGoInternalGenerator, error) {
+func NewGoInternal(logger *slog.Logger, pkgName, headerFile, year string) (*TaskGoInternalGenerator, error) {
 	g := &TaskGoInternalGenerator{
 		Logger:      logger.With("generator", "goInternal"),
 		Template:    &template.Template{},
 		PackageName: pkgName,
+		HeaderFile:  headerFile,
+		Year:        year,
 	}
 
 	g.RegisterTemplate(GoHeaderName, GoHeaderTpl).
@@ -63,10 +66,20 @@ func (*TaskGoInternalGenerator) RegisterMarkers(into *markers.Registry) error {
 
 func (g *TaskGoInternalGenerator) Generate(ctx *genall.GenerationContext) error {
 	var headerBytes bytes.Buffer
+	var headerText string
+
+	if g.HeaderFile != "" {
+		buf, err := ctx.ReadFile(g.HeaderFile)
+		if err != nil {
+			return err
+		}
+
+		headerText = strings.ReplaceAll(string(buf), " YEAR", " "+g.Year)
+	}
 
 	headerArgs := GoHeaderArgs{
 		PkgName: g.PackageName,
-		Header:  "// generated code",
+		Header:  headerText,
 		ImportPaths: []string{
 			"errors",
 			"fmt",

@@ -68,11 +68,11 @@ type FuncArgs struct {
 	TemplatesArgs PerTemplateArgs
 }
 
-func NewGoFunc(logger *slog.Logger, headerfile, year string) (*TaskGoFuncGenerator, error) {
+func NewGoFunc(logger *slog.Logger, headerFile, year string) (*TaskGoFuncGenerator, error) {
 	g := &TaskGoFuncGenerator{
 		Logger:     logger.With("generator", "goFunc"),
 		Template:   &template.Template{},
-		HeaderFile: headerfile,
+		HeaderFile: headerFile,
 		Year:       year,
 	}
 

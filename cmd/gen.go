@@ -79,7 +79,7 @@ The code generated for your main package will be written in zz_generated.tektask
 
 			genFunc = genFuncPtr
 
-			genInternalPtr, err := gengo.NewGoInternal(ctx.Logger, outputPkgName)
+			genInternalPtr, err := gengo.NewGoInternal(ctx.Logger, outputPkgName, headerFile, year)
 			if err != nil {
 				return err
 			}
