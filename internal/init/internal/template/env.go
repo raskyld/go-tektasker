@@ -78,7 +78,7 @@ OUTPUT_MANIFESTS=deployment
 PATH_KUBECTL=kubectl
 
 # Path to Tektasker
-PATH_TEKTASKER=tektasker
+PATH_TEKTASKER=go-tektasker
 
 # Path to KO builder
 PATH_KO=ko
