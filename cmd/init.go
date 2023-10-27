@@ -17,7 +17,7 @@ limitations under the License.
 package cmd
 
 import (
-	initGenerator "github.com/Raskyld/go-tektasker/internal/init"
+	initGenerator "github.com/raskyld/go-tektasker/internal/init"
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/controller-tools/pkg/genall"
 )

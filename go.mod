@@ -1,4 +1,4 @@
-module github.com/Raskyld/go-tektasker
+module github.com/raskyld/go-tektasker
 
 go 1.21
 

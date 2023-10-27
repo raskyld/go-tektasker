@@ -21,7 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	ttmarkers "github.com/Raskyld/go-tektasker/pkg/markers"
+	ttmarkers "github.com/raskyld/go-tektasker/pkg/markers"
 	"go/ast"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"

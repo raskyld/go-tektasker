@@ -24,7 +24,7 @@ import (
 	"strings"
 	"text/template"
 
-	ttmarkers "github.com/Raskyld/go-tektasker/pkg/markers"
+	ttmarkers "github.com/raskyld/go-tektasker/pkg/markers"
 	"sigs.k8s.io/controller-tools/pkg/genall"
 	"sigs.k8s.io/controller-tools/pkg/markers"
 )

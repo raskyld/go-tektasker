@@ -18,7 +18,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/Raskyld/go-tektasker/cmd"
+	"github.com/raskyld/go-tektasker/cmd"
 	"os"
 )
 

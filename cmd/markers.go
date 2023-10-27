@@ -18,7 +18,7 @@ package cmd
 
 import (
 	"errors"
-	ttmarkers "github.com/Raskyld/go-tektasker/pkg/markers"
+	ttmarkers "github.com/raskyld/go-tektasker/pkg/markers"
 	"github.com/spf13/cobra"
 	"os"
 	"sigs.k8s.io/controller-tools/pkg/genall/help"

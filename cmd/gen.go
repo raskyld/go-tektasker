@@ -17,8 +17,8 @@ limitations under the License.
 package cmd
 
 import (
-	"github.com/Raskyld/go-tektasker/internal/gengo"
-	"github.com/Raskyld/go-tektasker/internal/genyaml"
+	"github.com/raskyld/go-tektasker/internal/gengo"
+	"github.com/raskyld/go-tektasker/internal/genyaml"
 	"github.com/spf13/cobra"
 	"path/filepath"
 	"sigs.k8s.io/controller-tools/pkg/genall"

@@ -18,7 +18,7 @@ package gengo
 
 import (
 	"bytes"
-	ttmarkers "github.com/Raskyld/go-tektasker/pkg/markers"
+	ttmarkers "github.com/raskyld/go-tektasker/pkg/markers"
 	"log/slog"
 	"sigs.k8s.io/controller-tools/pkg/genall"
 	"sigs.k8s.io/controller-tools/pkg/markers"
