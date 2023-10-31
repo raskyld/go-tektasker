@@ -8,6 +8,8 @@ A framework for building
 
 ## Demo
 
+[demo-alpha-go-tektasker.webm](https://github.com/raskyld/go-tektasker/assets/32960642/ab00e31e-0c11-4fe0-91bd-16352039926e)
+
 ## Features
 
 - Generate YAML from Go package.
