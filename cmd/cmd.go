@@ -29,7 +29,7 @@ func New(version string) *cobra.Command {
 	ctx.Version = version
 
 	root := &cobra.Command{
-		Use:   "tektasker",
+		Use:   "go-tektasker",
 		Short: "From your Go IDE to your Tekton Cluster in minutes",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			handlerOpt := &slog.HandlerOptions{}
