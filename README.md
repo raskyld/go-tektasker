@@ -2,6 +2,17 @@
 
 > :wrench: This project is in an **alpha** level of readiness.
 
+<p align="center">
+  <a href="https://go-tektasker.nocera.eu">
+    <img src="https://go-tektasker.nocera.eu/_astro/go-tektasker.18551fa8.svg"/>
+  </a>
+</p>
+<p align="center">
+  <a href="https://goreportcard.com/report/github.com/raskyld/go-tektasker">
+    <img src="https://goreportcard.com/badge/github.com/raskyld/go-tektasker"/>
+  </a>
+</p>
+
 A framework for building
 [Tekton](https://tekton.dev)
 [Tasks](https://tekton.dev/docs/pipelines/tasks/) in Go.
