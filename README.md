@@ -36,3 +36,10 @@ See the [installation instructions][install].
 ## Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md)
+
+## Acknowledgements
+
+- Thanks to [@MariaLetta](https://github.com/MariaLetta) for [Free Gophers Pack](https://github.com/MariaLetta/free-gophers-pack)! 🤩
+- Thanks to [Execore](https://pixabay.com/fr/users/execore-32910697/) for the music used in the demo 🎵
+- Thanks to the *Tekton Authors* (indeed! 😏)
+- Thanks to the Kubernetes SIG `apimachinery` and to `kubebuilder` for the libraries this project is using 🚀
