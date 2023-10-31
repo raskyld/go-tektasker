@@ -18,14 +18,24 @@ package main
 
 import (
 	"fmt"
-	"github.com/raskyld/go-tektasker/cmd"
 	"os"
+	"runtime/debug"
+
+	"github.com/raskyld/go-tektasker/cmd"
 )
 
 // Version is backed-in during the build process by the linker
-var Version = "dev"
+var Version string
 
 func main() {
+	if Version == "" {
+		info, ok := debug.ReadBuildInfo()
+
+		if ok {
+			Version = info.Main.Version
+		}
+	}
+
 	cli := cmd.New(Version)
 	if err := cli.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
